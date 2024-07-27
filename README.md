@@ -1,108 +1,121 @@
-# Mermaid to Cloudflare R2 Renderer
+# Mermaid.js Renderer and Uploader
 
-A Node.js Express application that renders Mermaid.js diagrams to images, uploads them to Cloudflare R2, and returns the URL of the uploaded image.
-
-## Features
-
-- Accepts Mermaid.js payloads via a REST API.
-- Renders the Mermaid.js diagram to a PNG image using Puppeteer.
-- Uploads the rendered image to a Cloudflare R2 bucket.
-- Returns a signed URL for accessing the uploaded image.
+This application allows you to render Mermaid.js diagrams, convert them to PNG format, and upload them to Cloudflare R2 storage. The service is built using Node.js, Express, Puppeteer, and Sharp.
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
-- npm
-- Cloudflare R2 account with access keys
+Ensure you have the following installed:
 
-## Getting Started
+- Node.js (>= 14.x)
+- npm (Node Package Manager)
+- AWS SDK for JavaScript v3
 
-### 1. Clone the repository
+## Environment Variables
+
+Create a `.env` file in the root directory of your project and add the following variables:
+
+```
+CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
+R2_ACCESS_KEY_ID=your_r2_access_key_id
+R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+R2_BUCKET_NAME=your_r2_bucket_name
+PORT=3001
+```
+
+Replace the placeholder values with your actual Cloudflare R2 credentials and bucket name.
+
+## Installation
+
+1. Clone the repository:
+
+    ```bash
+    git clone https://github.com/michaelappdev/mermaid-service.git
+    cd mermaid-r2-renderer
+    ```
+
+2. Install the dependencies:
+
+    ```bash
+    npm install
+    ```
+
+## Running the Server
+
+To start the server, run:
 
 ```bash
-git clone https://github.com/michaelappdev/mermaid-service-v2.git
-cd <repository>
+node index.js
 ```
 
-### 2. Install dependencies
+The server will run on the port specified in your `.env` file or default to port 3001.
 
-```bash
-npm install
-```
+## API Endpoint
 
-### 3. Set up environment variables
+### POST /render
 
-Create a `.env` file in the root directory of the project and add your Cloudflare R2 credentials and other configurations:
+This endpoint accepts a Mermaid.js diagram, renders it, converts it to a PNG, and uploads it to Cloudflare R2.
 
-```plaintext
-CLOUDFLARE_ACCOUNT_ID=<Your Cloudflare Account ID>
-R2_ACCESS_KEY_ID=<Your R2 Access Key ID>
-R2_SECRET_ACCESS_KEY=<Your R2 Secret Access Key>
-R2_BUCKET_NAME=<Your R2 Bucket Name>
-PORT=3000
-```
+#### Request
 
-### 4. Run the application
+- **URL**: `/render`
+- **Method**: `POST`
+- **Headers**: `Content-Type: application/json`
+- **Body**: 
 
-```bash
-node app.js
-```
+    ```json
+    {
+        "mermaid": "graph TD; A-->B; A-->C; B-->D; C-->D;"
+    }
+    ```
 
-The server will start running on the port specified in the `.env` file (default is 3000).
+#### Response
 
-## Usage
+- **Success**: `200 OK`
+    ```json
+    {
+        "url": "https://your_r2_dev_subdomain/mermaid_YYYY-MM-DD_HH-MM-SS.png"
+    }
+    ```
 
-### Render a Mermaid.js Diagram
+- **Error**: `400 Bad Request`
+    ```json
+    {
+        "error": "No Mermaid.js payload provided"
+    }
+    ```
 
-To render a Mermaid.js diagram and upload it to Cloudflare R2, send a POST request to `/render` with the Mermaid.js payload in the request body.
+- **Error**: `500 Internal Server Error`
+    ```json
+    {
+        "error": "Error rendering Mermaid.js"
+    }
+    ```
 
-#### Example Request
+## How It Works
 
-```bash
-curl -X POST http://localhost:3000/render -H "Content-Type: application/json" -d '{"mermaid": "graph TD; A-->B;A-->C; B-->D; C-->D;"}'
-```
+1. **Setup**: The application configures an S3 client to connect to Cloudflare R2 using the provided credentials.
+2. **Helper Function**: A helper function generates a unique, safe filename based on the current date and time.
+3. **Endpoint**: The `/render` endpoint:
+    - Accepts a Mermaid.js diagram in the request body.
+    - Uses Puppeteer to render the diagram in a headless browser.
+    - Captures a screenshot of the rendered diagram.
+    - Converts the screenshot to PNG format using Sharp.
+    - Uploads the PNG to Cloudflare R2.
+    - Returns the public URL of the uploaded PNG.
 
-#### Example Response
+## Logging
 
-```json
-{
-  "url": "https://<your-cloudflare-account-id>.r2.cloudflarestorage.com/<your-bucket-name>/mermaid_2023-07-26T12:34:56.789Z.png"
-}
-```
-
-The response contains a signed URL for accessing the uploaded image.
-
-## Project Structure
-
-```
-.
-├── app.js
-├── package.json
-├── package-lock.json
-├── .env
-└── .gitignore
-```
-
-- `app.js`: Main application file.
-- `package.json`: Project metadata and dependencies.
-- `package-lock.json`: Lockfile for npm dependencies.
-- `.env`: Environment variables (not included in version control).
-- `.gitignore`: Specifies files and directories to be ignored by git.
+The application logs the public URL of the uploaded PNG for debugging purposes.
 
 ## Dependencies
 
-- [express](https://www.npmjs.com/package/express): Fast, unopinionated, minimalist web framework for Node.js.
-- [@aws-sdk/client-s3](https://www.npmjs.com/package/@aws-sdk/client-s3): AWS SDK for JavaScript S3 Client.
-- [@aws-sdk/s3-request-presigner](https://www.npmjs.com/package/@aws-sdk/s3-request-presigner): AWS SDK for JavaScript S3 Request Presigner.
-- [puppeteer](https://www.npmjs.com/package/puppeteer): Headless Chrome Node.js API.
-- [dotenv](https://www.npmjs.com/package/dotenv): Loads environment variables from a `.env` file.
-- [body-parser](https://www.npmjs.com/package/body-parser): Node.js body parsing middleware.
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request on GitHub.
+- `dotenv`: Loads environment variables from a `.env` file.
+- `express`: Web framework for Node.js.
+- `@aws-sdk/client-s3`: AWS SDK for interacting with S3 and R2.
+- `body-parser`: Middleware for parsing JSON request bodies.
+- `puppeteer`: Headless Chrome Node.js API.
+- `sharp`: High-performance image processing library.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-```
+This project is licensed under the MIT License.
