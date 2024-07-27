@@ -67,6 +67,7 @@ app.post("/render", async (req, res) => {
       </html>
     `;
 
+    await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 2 });
     await page.setContent(content);
     await page.waitForSelector(".mermaid svg");
 
@@ -81,7 +82,7 @@ app.post("/render", async (req, res) => {
     // Add a delay to ensure rendering
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Capture the screenshot as PNG
+    // Capture the screenshot as PNG with higher resolution
     const screenshot = await page.screenshot({
       fullPage: true,
       omitBackground: true,
@@ -96,7 +97,10 @@ app.post("/render", async (req, res) => {
     }
 
     // Convert the screenshot to PNG using sharp
-    const pngBuffer = await sharp(screenshot).png().toBuffer();
+    const pngBuffer = await sharp(screenshot)
+      .resize({ width: 3840, height: 2160 }) // Increase resolution
+      .png()
+      .toBuffer();
 
     // Generate a unique and safe file name based on current date/time
     const fileName = generateSafeFilename();
